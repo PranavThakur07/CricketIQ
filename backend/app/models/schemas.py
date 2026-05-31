@@ -57,3 +57,35 @@ class MomentumResponse(BaseModel):
     overs_data: List[OverMomentum]
     current_momentum_owner: str = Field(..., description="The team currently dominating momentum")
     momentum_summary: str = Field(..., description="AI description of the momentum swings")
+
+class OverData(BaseModel):
+    over: int = Field(..., description="Over index number")
+    runs: int = Field(..., description="Runs scored in this over")
+    wickets: int = Field(..., description="Wickets lost in this over")
+
+class MomentumCalculationRequest(BaseModel):
+    batting_team: Optional[str] = Field("India", description="Name of the batting team")
+    bowling_team: Optional[str] = Field("Pakistan", description="Name of the bowling team")
+    overs: List[OverData] = Field(..., description="List of over stats for momentum calculations")
+
+class CalculatedOverMomentum(BaseModel):
+    over: int
+    runs: int
+    wickets: int
+    current_run_rate: float
+    average_run_rate: float
+    momentum_score: float
+    momentum_swing: float
+    is_turning_point: bool
+    highlight: Optional[str] = None
+
+class MomentumCalculationResponse(BaseModel):
+    batting_team: str
+    bowling_team: str
+    overs_calculated: List[CalculatedOverMomentum]
+    best_over: int
+    worst_over: int
+    match_turning_point: int
+    current_momentum_holder: str
+    ai_narrative: str
+
