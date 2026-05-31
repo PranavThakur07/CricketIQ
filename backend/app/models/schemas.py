@@ -89,3 +89,14 @@ class MomentumCalculationResponse(BaseModel):
     current_momentum_holder: str
     ai_narrative: str
 
+class AnalystQueryRequest(BaseModel):
+    question: str = Field(..., description="The query / question from the user")
+    match_id: str = Field(..., description="The ID of the match to analyze")
+
+class AnalystQueryResponse(BaseModel):
+    answer: str = Field(..., description="Main direct analyst answer")
+    evidence: List[str] = Field(..., description="Bullet points of supporting statistical evidence")
+    key_events: List[str] = Field(..., description="List of key match over events")
+    confidence: float = Field(0.95, description="Model analytical confidence ratio")
+
+
