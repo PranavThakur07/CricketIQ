@@ -11,6 +11,7 @@ import Analyst from './pages/Analyst';
 import Predictor from './pages/Predictor';
 import Fantasy from './pages/Fantasy';
 import Simulator from './pages/Simulator';
+import WarRoom from './pages/WarRoom';
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="momentum" element={<Momentum />} />
           <Route path="analyst" element={<Analyst />} />
+          <Route path="war-room" element={<WarRoom />} />
           <Route path="predictor" element={<Predictor />} />
           <Route path="fantasy" element={<Fantasy />} />
           <Route path="simulator" element={<Simulator />} />

@@ -10,14 +10,19 @@ import {
   Trophy,
   HelpCircle,
   Menu,
-  X
+  X,
+  Swords,
+  Radio,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 
-export default function Sidebar({ isOpen, toggleSidebar }) {
+export default function Sidebar({ isOpen, toggleSidebar, appMode, setAppMode, providerStatus }) {
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: LayoutGrid },
     { name: 'Momentum Intelligence', path: '/momentum', icon: Activity },
     { name: 'AI Match Analyst', path: '/analyst', icon: Bot },
+    { name: 'Agentic War Room', path: '/war-room', icon: Swords },
     { name: 'Win Predictor', path: '/predictor', icon: TrendingUp },
     { name: 'Fantasy Assistant', path: '/fantasy', icon: Sparkles },
     { name: 'Universe Simulator', path: '/simulator', icon: RotateCcw },
@@ -59,45 +64,118 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
           </button>
         </div>
 
+        {/* Dynamic Mode Switch Widget */}
+        <div className="px-6 pt-6 pb-2">
+          <div className="bg-stadium-dark/80 border border-stadium-border rounded-2xl p-1.5 flex items-center justify-between shadow-inner">
+            <button
+              onClick={() => setAppMode('historical')}
+              className={`flex-1 text-center py-2 rounded-xl text-[10px] font-bold tracking-wider uppercase transition-all duration-300 ${
+                appMode === 'historical'
+                  ? 'bg-gradient-to-r from-stadium-emerald/20 to-stadium-cyan/20 border border-stadium-emerald/30 text-white shadow-sm font-extrabold'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              Historical
+            </button>
+            <button
+              onClick={() => setAppMode('live')}
+              className={`flex-1 text-center py-2 rounded-xl text-[10px] font-bold tracking-wider uppercase transition-all duration-300 flex items-center justify-center ${
+                appMode === 'live'
+                  ? 'bg-gradient-to-r from-rose-950/40 to-red-900/30 border border-red-600/40 text-red-400 shadow-sm font-extrabold animate-pulse-slow'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${
+                appMode === 'live' ? 'bg-red-500 animate-ping' : 'bg-slate-500'
+              }`}></span>
+              Live Mode
+            </button>
+          </div>
+        </div>
+
         {/* Navigation list */}
-        <nav className="flex-1 space-y-1.5 px-4 py-6 overflow-y-auto h-[calc(100vh-4rem)]">
-          <div className="px-3 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-            Intelligence Engines
+        <nav className="flex-1 space-y-1.5 px-4 py-4 overflow-y-auto h-[calc(100vh-12rem)]">
+          <div className="px-3 mb-2 flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              Intelligence Engines
+            </span>
+            {appMode === 'live' && (
+              <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+            )}
           </div>
           {menuItems.map((item) => {
             const Icon = item.icon;
+            // Check if specific items are live-disabled or live-customized
+            const isSimulator = item.path === '/simulator';
+            const isWarRoom = item.path === '/war-room';
             return (
               <NavLink
                 key={item.path}
                 to={item.path}
                 onClick={() => { if (window.innerWidth < 1024) toggleSidebar(); }}
                 className={({ isActive }) =>
-                  `flex items-center space-x-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
+                  `flex items-center justify-between px-3 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
                     isActive
-                      ? 'bg-gradient-to-r from-stadium-emerald/20 to-stadium-cyan/10 text-white border-l-4 border-stadium-emerald shadow-sm'
+                      ? appMode === 'live'
+                        ? 'bg-gradient-to-r from-red-950/20 to-rose-900/10 text-white border-l-4 border-red-500 shadow-sm'
+                        : 'bg-gradient-to-r from-stadium-emerald/20 to-stadium-cyan/10 text-white border-l-4 border-stadium-emerald shadow-sm'
                       : 'text-slate-400 hover:text-white hover:bg-stadium-border/40'
                   }`
                 }
               >
-                <Icon className="h-5 w-5 shrink-0" />
-                <span>{item.name}</span>
+                <div className="flex items-center space-x-3">
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <span>{item.name}</span>
+                </div>
+                
+                {/* Visual badges for live features */}
+                {appMode === 'live' && (item.path === '/momentum' || item.path === '/predictor') && (
+                  <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-red-950/60 border border-red-500/30 text-red-500 uppercase tracking-wider scale-90 animate-pulse">
+                    Live
+                  </span>
+                )}
+                {isWarRoom && (
+                  <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-stadium-cyan/10 border border-stadium-cyan/35 text-stadium-cyan uppercase tracking-wider scale-90">
+                    War Room
+                  </span>
+                )}
               </NavLink>
             );
           })}
 
-          <div className="pt-6 border-t border-stadium-border/50 mt-6">
-            <div className="px-3 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-              Resources
+          <div className="pt-4 border-t border-stadium-border/50 mt-4 space-y-4">
+            <div>
+              <div className="px-3 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                Resources
+              </div>
+              <a 
+                href="/docs" 
+                target="_blank" 
+                rel="noreferrer"
+                className="flex items-center space-x-3 px-3 py-1.5 text-slate-400 hover:text-white text-xs transition-colors duration-200"
+              >
+                <HelpCircle className="h-4 w-4" />
+                <span>API Documentation</span>
+              </a>
             </div>
-            <a 
-              href="/docs" 
-              target="_blank" 
-              rel="noreferrer"
-              className="flex items-center space-x-3 px-3 py-2 text-slate-400 hover:text-white text-xs transition-colors duration-200"
-            >
-              <HelpCircle className="h-4 w-4" />
-              <span>API Documentation</span>
-            </a>
+
+            {/* Provider Connection Status Widget */}
+            <div className="px-3 py-2 bg-stadium-dark/40 border border-stadium-border/60 rounded-xl">
+              <div className="flex items-center justify-between text-[9px] font-extrabold uppercase text-slate-500 mb-1">
+                <span>API Data Feed</span>
+                {providerStatus?.status === 'connected' ? (
+                  <Wifi className="h-3 w-3 text-stadium-emerald" />
+                ) : (
+                  <WifiOff className="h-3 w-3 text-amber-500" />
+                )}
+              </div>
+              <span className={`block text-[10px] font-bold truncate ${
+                providerStatus?.status === 'connected' ? 'text-stadium-emerald' : 'text-amber-500'
+              }`}>
+                {providerStatus?.display_message || 'Checking feed...'}
+              </span>
+            </div>
+
           </div>
         </nav>
       </aside>

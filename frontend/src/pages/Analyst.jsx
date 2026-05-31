@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { 
   Bot, 
   User, 
@@ -13,10 +14,14 @@ import {
   Trophy, 
   CheckCircle,
   TrendingUp,
-  Cpu
+  Cpu,
+  WifiOff
 } from 'lucide-react';
 
 export default function Analyst() {
+  const { appMode, setAppMode, providerStatus } = useOutletContext() || {};
+  const isLiveOffline = appMode === 'live' && providerStatus?.status === 'not_configured';
+
   const [matches, setMatches] = useState([
     { id: "ind_vs_pak_2022", name: "India vs Pakistan (T20 World Cup 2022)", batting_team: "India", bowling_team: "Pakistan" },
     { id: "rcb_vs_srh_2016", name: "RCB vs SRH (IPL 2016 Final)", batting_team: "RCB", bowling_team: "SRH" },
@@ -237,6 +242,24 @@ export default function Analyst() {
           </select>
         </div>
       </div>
+
+      {isLiveOffline && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-950/15 p-4 flex flex-col md:flex-row items-center justify-between gap-4 animate-pulse-slow">
+          <div className="flex items-center space-x-3 text-left">
+            <WifiOff className="h-5 w-5 text-amber-500 shrink-0" />
+            <div>
+              <span className="block text-xs font-bold text-white uppercase tracking-wider">Live Mode Offline</span>
+              <span className="block text-[10px] text-slate-400">Live API Provider is not configured. Real-time scores and engine updates are locked.</span>
+            </div>
+          </div>
+          <button
+            onClick={() => setAppMode('historical')}
+            className="px-4 py-2 bg-gradient-to-r from-stadium-emerald to-stadium-cyan hover:opacity-90 rounded-xl text-[10px] font-black text-stadium-dark uppercase tracking-wider cursor-pointer"
+          >
+            Switch to Historical Mode
+          </button>
+        </div>
+      )}
 
       {/* Main Layout Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

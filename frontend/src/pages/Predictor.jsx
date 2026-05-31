@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { TrendingUp, RefreshCw, Trophy, Target, Zap, Activity } from 'lucide-react';
+import { useOutletContext } from 'react-router-dom';
+import { TrendingUp, RefreshCw, Trophy, Target, Zap, Activity, WifiOff } from 'lucide-react';
 
 export default function Predictor() {
+  const { appMode, setAppMode, providerStatus } = useOutletContext() || {};
+  const isLiveOffline = appMode === 'live' && providerStatus?.status === 'not_configured';
+
   // Input states
   const [battingTeam, setBattingTeam] = useState("India");
   const [bowlingTeam, setBowlingTeam] = useState("Australia");
@@ -89,6 +93,24 @@ export default function Predictor() {
         </h1>
         <p className="text-slate-400 text-xs">Run real-time probability simulations using custom batting, bowling, run rate, and wicket constraints.</p>
       </div>
+
+      {isLiveOffline && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-950/15 p-4 flex flex-col md:flex-row items-center justify-between gap-4 animate-pulse-slow">
+          <div className="flex items-center space-x-3 text-left">
+            <WifiOff className="h-5 w-5 text-amber-500 shrink-0" />
+            <div>
+              <span className="block text-xs font-bold text-white uppercase tracking-wider">Live Mode Offline</span>
+              <span className="block text-[10px] text-slate-400">Live API Provider is not configured. Real-time scores and engine updates are locked.</span>
+            </div>
+          </div>
+          <button
+            onClick={() => setAppMode('historical')}
+            className="px-4 py-2 bg-gradient-to-r from-stadium-emerald to-stadium-cyan hover:opacity-90 rounded-xl text-[10px] font-black text-stadium-dark uppercase tracking-wider cursor-pointer"
+          >
+            Switch to Historical Mode
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         

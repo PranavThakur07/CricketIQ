@@ -112,5 +112,68 @@ class AlternateUniverseResponse(BaseModel):
     alternate_story: str = Field(..., description="Cinematic TV-style commentary of the alternate reality shift")
     key_changes: List[str] = Field(..., description="Array of specific match changes that occurred")
 
+class ProviderStatusResponse(BaseModel):
+    status: str = Field(..., description="Status string: 'connected' or 'not_configured'")
+    provider_name: str = Field(..., description="Active provider name")
+    display_message: str = Field(..., description="Commentator status message, e.g. '✓ CricAPI Connected'")
+
+class LiveMatchBrief(BaseModel):
+    id: str
+    match_name: str
+    batting_team: str
+    bowling_team: str
+    current_score: int
+    wickets_lost: int
+    overs_completed: float
+    target: int
+    required_run_rate: float
+    current_run_rate: float
+    status_text: str
+    last_updated: str
+
+class LiveMatchDetail(BaseModel):
+    id: str
+    match_name: str
+    batting_team: str
+    bowling_team: str
+    venue: str
+    format: str
+    target: int
+    current_score: int
+    wickets_lost: int
+    overs_completed: float
+    required_run_rate: float
+    current_run_rate: float
+    status_text: str
+    last_updated: str
+    overs: List[OverData]
+    momentum: Optional[MomentumCalculationResponse] = None
+    win_probability: Optional[Dict[str, float]] = None
+
+class WarRoomRequest(BaseModel):
+    agent_type: str = Field(..., description="Agent identifier: 'analyst', 'predictor', or 'strategist'")
+    question: str = Field(..., description="User query / prompt for the agent")
+    match_id: str = Field(..., description="Match ID being reviewed")
+    is_live: bool = Field(False, description="Flag indicating if the match is live")
+
+class WarRoomResponse(BaseModel):
+    agent_type: str
+    reply: str = Field(..., description="Chatbot agent commentary reply")
+    strategic_insights: List[str] = Field(default=[], description="Bullet logs of technical suggestions")
+    confidence_score: float = Field(0.95, description="Agent probability certainty score")
+
+class MatchReportRequest(BaseModel):
+    match_id: str = Field(..., description="Match ID to generate standard report")
+    is_live: bool = Field(False, description="Flag indicating if match is live")
+
+class MatchReportResponse(BaseModel):
+    match_name: str
+    match_summary: str = Field(..., description="Cinematic full match recap")
+    turning_points: List[str] = Field(..., description="List of key turning point overs")
+    key_performer: str = Field(..., description="MVP detailed performance stats")
+    winning_factors: List[str] = Field(..., description="Winning factors lists")
+    strategic_insights: List[str] = Field(..., description="Strategic recommendations for future matches")
+
+
 
 
