@@ -99,4 +99,18 @@ class AnalystQueryResponse(BaseModel):
     key_events: List[str] = Field(..., description="List of key match over events")
     confidence: float = Field(0.95, description="Model analytical confidence ratio")
 
+class AlternateUniverseRequest(BaseModel):
+    match_id: str = Field(..., description="Match ID to simulate")
+    scenario: str = Field(..., description="Hypothetical scenario prompt")
+
+class AlternateUniverseResponse(BaseModel):
+    original_winner: str = Field(..., description="Original winner of the match")
+    simulated_winner: str = Field(..., description="Simulated alternate winner")
+    win_probability_before: float = Field(..., description="Projected winning probability before the reality shift")
+    win_probability_after: float = Field(..., description="Projected winning probability after the reality shift")
+    impact_score: float = Field(..., description="Total index change of winning probability")
+    alternate_story: str = Field(..., description="Cinematic TV-style commentary of the alternate reality shift")
+    key_changes: List[str] = Field(..., description="Array of specific match changes that occurred")
+
+
 
