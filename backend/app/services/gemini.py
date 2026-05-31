@@ -1,3 +1,9 @@
+"""
+CricketIQ Gemini AI Service Integration.
+Provides robust AI analyst query handling, simulations, and report generation
+with comprehensive type safety and strict deterministic mock fallbacks.
+"""
+
 import logging
 import json
 import asyncio
