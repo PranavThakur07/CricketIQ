@@ -14,10 +14,11 @@ import {
   Swords,
   Radio,
   Wifi,
-  WifiOff
+  WifiOff,
+  Zap
 } from 'lucide-react';
 
-export default function Sidebar({ isOpen, toggleSidebar, appMode, setAppMode, providerStatus }) {
+export default function Sidebar({ isOpen, toggleSidebar, appMode, setAppMode, providerStatus, setTourActive, setTourStep }) {
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: LayoutGrid },
     { name: 'Momentum Intelligence', path: '/momentum', icon: Activity },
@@ -93,8 +94,22 @@ export default function Sidebar({ isOpen, toggleSidebar, appMode, setAppMode, pr
           </div>
         </div>
 
+        {/* Judge Demo Tour Launcher */}
+        <div className="px-6 pb-2">
+          <button
+            onClick={() => {
+              setTourActive(true);
+              setTourStep(1);
+            }}
+            className="w-full py-2.5 rounded-2xl bg-gradient-to-r from-stadium-emerald/10 via-stadium-cyan/15 to-stadium-emerald/10 hover:from-stadium-emerald/20 hover:to-stadium-cyan/20 border border-stadium-cyan/45 text-[10px] font-black text-white uppercase tracking-widest flex items-center justify-center space-x-1.5 shadow-lg group cursor-pointer"
+          >
+            <Zap className="h-3.5 w-3.5 text-stadium-cyan group-hover:scale-110 transition-transform fill-current animate-pulse mr-1" />
+            <span>⚡ 2-Min Judge Tour</span>
+          </button>
+        </div>
+
         {/* Navigation list */}
-        <nav className="flex-1 space-y-1.5 px-4 py-4 overflow-y-auto h-[calc(100vh-12rem)]">
+        <nav className="flex-1 space-y-1.5 px-4 py-4 overflow-y-auto h-[calc(100vh-14rem)]">
           <div className="px-3 mb-2 flex items-center justify-between">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
               Intelligence Engines
