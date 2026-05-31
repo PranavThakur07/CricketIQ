@@ -1,5 +1,6 @@
 import logging
 import json
+import asyncio
 from typing import Dict, Any, List
 from app.config import settings
 from app.models.schemas import PredictionRequest, SimulatorRequest, ChatRequest, AnalystQueryRequest, AlternateUniverseRequest, WarRoomRequest, MatchReportRequest
@@ -27,6 +28,61 @@ class GeminiService:
             except Exception as e:
                 logger.error(f"Failed to initialize live Gemini Client: {e}. Falling back to mock engine.")
 
+    def _robust_stringify(self, val: Any) -> str:
+        if val is None:
+            return ""
+        if isinstance(val, str):
+            return val
+        if isinstance(val, (int, float, bool)):
+            return str(val)
+        if isinstance(val, dict):
+            # Check for specific combinations to join them nicely
+            if ("moment" in val or "time" in val) and ("text" in val or "description" in val or "desc" in val):
+                moment = val.get("moment") or val.get("time")
+                desc = val.get("text") or val.get("description") or val.get("desc")
+                if moment and desc:
+                    return f"{self._robust_stringify(moment)}: {self._robust_stringify(desc)}"
+            
+            if "name" in val and ("impact" in val or "performance" in val or "stats" in val):
+                name = val.get("name")
+                impact = val.get("impact") or val.get("performance") or val.get("stats")
+                if name and impact:
+                    return f"{self._robust_stringify(name)} - {self._robust_stringify(impact)}"
+
+            # Try extracting known keys first
+            for key in ["moment", "text", "factor", "recommendation", "name", "impact", "performance", "value", "desc", "description", "title", "content"]:
+                if key in val and val[key] is not None:
+                    if isinstance(val[key], (dict, list)):
+                        return self._robust_stringify(val[key])
+                    return str(val[key])
+            
+            # If no known key is found, join all stringified values of the dict
+            parts = []
+            for k, v in val.items():
+                if v is not None:
+                    parts.append(f"{k}: {self._robust_stringify(v)}")
+            return " | ".join(parts) if parts else str(val)
+        if isinstance(val, list):
+            return ", ".join([self._robust_stringify(item) for item in val if item is not None])
+        return str(val)
+
+    def _robust_listify_and_stringify(self, val: Any) -> List[str]:
+        if val is None:
+            return []
+        if isinstance(val, list):
+            res = []
+            for item in val:
+                if item is not None:
+                    res.append(self._robust_stringify(item))
+            return res
+        if isinstance(val, dict):
+            # Check if a list is nested under any key
+            for k, v in val.items():
+                if isinstance(v, list):
+                    return self._robust_listify_and_stringify(v)
+            return [self._robust_stringify(val)]
+        return [str(val)]
+
     async def generate_match_insights(self, req: PredictionRequest) -> str:
         """
         Generate contextual AI insights for live match predictor.
@@ -40,13 +96,17 @@ class GeminiService:
 
         if self.client:
             try:
-                response = self.client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=prompt
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.client.models.generate_content,
+                        model='gemini-2.5-flash',
+                        contents=prompt
+                    ),
+                    timeout=3.0
                 )
                 return response.text
             except Exception as e:
-                logger.error(f"Live Gemini insight call failed: {e}. Using intelligent fallback.")
+                logger.error(f"Live Gemini insight call failed or timed out: {e}. Using intelligent fallback.")
 
         # High-Fidelity Mock Fallback (Intelligent responses matching the live situation!)
         r_run = (req.target - req.current_score)
@@ -111,12 +171,16 @@ class GeminiService:
 
         if self.client:
             try:
-                response = self.client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=(
-                        f"You are CricketIQ-Bot, an expert cricket analyst. Answer this query: {req.prompt}. "
-                        f"Keep it engaging, professional, and full of stats-based wisdom."
-                    )
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.client.models.generate_content,
+                        model='gemini-2.5-flash',
+                        contents=(
+                            f"You are CricketIQ-Bot, an expert cricket analyst. Answer this query: {req.prompt}. "
+                            f"Keep it engaging, professional, and full of stats-based wisdom."
+                        )
+                    ),
+                    timeout=3.0
                 )
                 return {
                     "reply": response.text,
@@ -127,7 +191,7 @@ class GeminiService:
                     ]
                 }
             except Exception as e:
-                logger.error(f"Live Gemini chat failed: {e}. Using fallback.")
+                logger.error(f"Live Gemini chat failed or timed out: {e}. Using fallback.")
 
         # High-Fidelity Mock Chat Responses based on common cricket queries
         if "spin" in query or "pitch" in query or "turn" in query:
@@ -211,24 +275,35 @@ class GeminiService:
         if self.client:
             try:
                 from google.genai import types
-                response = self.client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        system_instruction="You are a World-Class Cricket Analyst. You must output JSON matching the required schema."
-                    )
+                config_options = types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    system_instruction="You are a World-Class Cricket Analyst. You must output JSON matching the required schema."
+                )
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.client.models.generate_content,
+                        model='gemini-2.5-flash',
+                        contents=prompt,
+                        config=config_options
+                    ),
+                    timeout=3.0
                 )
                 
                 parsed = json.loads(response.text)
+                if not isinstance(parsed, dict):
+                    raise ValueError("Parsed Gemini response is not a JSON object")
+                
+                evidence = self._robust_listify_and_stringify(parsed.get("evidence"))
+                key_events = self._robust_listify_and_stringify(parsed.get("key_events"))
+                
                 return {
-                    "answer": parsed.get("answer", ""),
-                    "evidence": parsed.get("evidence", []),
-                    "key_events": parsed.get("key_events", []),
-                    "confidence": float(parsed.get("confidence", 0.95))
+                    "answer": self._robust_stringify(parsed.get("answer")),
+                    "evidence": evidence,
+                    "key_events": key_events,
+                    "confidence": float(parsed.get("confidence") if parsed.get("confidence") is not None else 0.95)
                 }
             except Exception as e:
-                logger.error(f"Live Gemini Analyst Query failed: {e}. Falling back to deterministic fallback.")
+                logger.error(f"Live Gemini Analyst Query failed or timed out: {e}. Falling back to deterministic fallback.")
 
         return self.generate_analyst_fallback(req.question, context)
 
@@ -355,27 +430,37 @@ class GeminiService:
         if self.client:
             try:
                 from google.genai import types
-                response = self.client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        system_instruction="You are an Elite Cricket Strategist. Return JSON only matching the schema."
-                    )
+                config_options = types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    system_instruction="You are an Elite Cricket Strategist. Return JSON only matching the schema."
+                )
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.client.models.generate_content,
+                        model='gemini-2.5-flash',
+                        contents=prompt,
+                        config=config_options
+                    ),
+                    timeout=3.0
                 )
                 
                 parsed = json.loads(response.text)
+                if not isinstance(parsed, dict):
+                    raise ValueError("Parsed Gemini response is not a JSON object")
+                
+                key_changes = self._robust_listify_and_stringify(parsed.get("key_changes"))
+                
                 return {
-                    "original_winner": parsed.get("original_winner", bowling),
-                    "simulated_winner": parsed.get("simulated_winner", batting),
-                    "win_probability_before": float(parsed.get("win_probability_before", 40)),
-                    "win_probability_after": float(parsed.get("win_probability_after", 65)),
-                    "impact_score": float(parsed.get("impact_score", 25)),
-                    "alternate_story": parsed.get("alternate_story", ""),
-                    "key_changes": parsed.get("key_changes", [])
+                    "original_winner": self._robust_stringify(parsed.get("original_winner", bowling)),
+                    "simulated_winner": self._robust_stringify(parsed.get("simulated_winner", batting)),
+                    "win_probability_before": float(parsed.get("win_probability_before") if parsed.get("win_probability_before") is not None else 40.0),
+                    "win_probability_after": float(parsed.get("win_probability_after") if parsed.get("win_probability_after") is not None else 65.0),
+                    "impact_score": float(parsed.get("impact_score") if parsed.get("impact_score") is not None else 25.0),
+                    "alternate_story": self._robust_stringify(parsed.get("alternate_story")),
+                    "key_changes": key_changes
                 }
             except Exception as e:
-                logger.error(f"Live Gemini Simulator reality call failed: {e}. Falling back to deterministic simulation.")
+                logger.error(f"Live Gemini Simulator reality call failed or timed out: {e}. Falling back to deterministic simulation.")
 
         # High-fidelity mock simulator fallback engine (cinematic, tailored to presets and prompts)
         return self.generate_reality_fallback(req.match_id, req.scenario, context)
@@ -580,23 +665,33 @@ class GeminiService:
         if self.client:
             try:
                 from google.genai import types
-                response = self.client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        system_instruction=system_instruction
-                    )
+                config_options = types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    system_instruction=system_instruction
+                )
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.client.models.generate_content,
+                        model='gemini-2.5-flash',
+                        contents=prompt,
+                        config=config_options
+                    ),
+                    timeout=3.0
                 )
                 parsed = json.loads(response.text)
+                if not isinstance(parsed, dict):
+                    raise ValueError("Parsed Gemini response is not a JSON object")
+                
+                strategic_insights = self._robust_listify_and_stringify(parsed.get("strategic_insights"))
+                
                 return {
                     "agent_type": req.agent_type,
-                    "reply": parsed.get("reply", ""),
-                    "strategic_insights": parsed.get("strategic_insights", []),
-                    "confidence_score": float(parsed.get("confidence_score", 0.95))
+                    "reply": self._robust_stringify(parsed.get("reply")),
+                    "strategic_insights": strategic_insights,
+                    "confidence_score": float(parsed.get("confidence_score") if parsed.get("confidence_score") is not None else 0.95)
                 }
             except Exception as e:
-                logger.error(f"War room live agent {req.agent_type} call failed: {e}. Falling back.")
+                logger.error(f"War room live agent {req.agent_type} call failed or timed out: {e}. Falling back.")
 
         return self.generate_war_room_fallback(req, context)
 
@@ -693,25 +788,38 @@ class GeminiService:
         if self.client:
             try:
                 from google.genai import types
-                response = self.client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        system_instruction="You are the CricketIQ Chief Editorial Strategist. Generate high-quality tactical reports."
-                    )
+                config_options = types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    system_instruction="You are the CricketIQ Chief Editorial Strategist. Generate high-quality tactical reports."
+                )
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self.client.models.generate_content,
+                        model='gemini-2.5-flash',
+                        contents=prompt,
+                        config=config_options
+                    ),
+                    timeout=3.0
                 )
                 parsed = json.loads(response.text)
+                if not isinstance(parsed, dict):
+                    raise ValueError("Parsed Gemini response is not a JSON object")
+                
+                turning_points = self._robust_listify_and_stringify(parsed.get("turning_points"))
+                winning_factors = self._robust_listify_and_stringify(parsed.get("winning_factors"))
+                strategic_insights = self._robust_listify_and_stringify(parsed.get("strategic_insights"))
+                key_performer = self._robust_stringify(parsed.get("key_performer"))
+                
                 return {
-                    "match_name": parsed.get("match_name", f"{batting} vs {bowling}"),
-                    "match_summary": parsed.get("match_summary", ""),
-                    "turning_points": parsed.get("turning_points", []),
-                    "key_performer": parsed.get("key_performer", ""),
-                    "winning_factors": parsed.get("winning_factors", []),
-                    "strategic_insights": parsed.get("strategic_insights", [])
+                    "match_name": self._robust_stringify(parsed.get("match_name")) or f"{batting} vs {bowling}",
+                    "match_summary": self._robust_stringify(parsed.get("match_summary")),
+                    "turning_points": turning_points,
+                    "key_performer": key_performer,
+                    "winning_factors": winning_factors,
+                    "strategic_insights": strategic_insights
                 }
             except Exception as e:
-                logger.error(f"Failed to generate match report: {e}. Using fallback.")
+                logger.error(f"Failed to generate match report or timed out: {e}. Using fallback.")
 
         return self.generate_report_fallback(req, context)
 
